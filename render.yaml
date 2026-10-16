@@ -1,0 +1,35 @@
+# Referência: https://render.com/docs/blueprint-spec
+# PostgreSQL externo: preencher DATABASE_URL com o Supabase do projeto.
+# Aplicar as migrações antes da publicação, conforme DEPLOY_RENDER.md.
+services:
+  - type: web
+    name: naosemetanobrasil
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: "off"
+    healthCheckPath: /health/ready
+    domains:
+      - naosemetanobrasil.online
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: FRONTEND_DIR
+        value: /app/web
+      - key: PUBLIC_BASE_URL
+        value: https://naosemetanobrasil.online
+      - key: INSTAGRAM_OFFICIAL_HANDLE
+        value: naosemetanobrasil
+      - key: INSTAGRAM_VERIFICATION_MODE
+        value: manual
+      - key: DATABASE_MAX_CONNECTIONS
+        value: "5"
+      - key: DATABASE_URL
+        sync: false
+      - key: VERIFICATION_CODE_PEPPER
+        sync: false
+      - key: TOTP_ENCRYPTION_KEY
+        sync: false

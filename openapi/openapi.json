@@ -1,0 +1,1211 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Não se Meta no Brasil — autenticação e vínculo de perfil",
+    "version": "0.1.0",
+    "description": "Primeira etapa do backend hexagonal em Go. Relatos e anexos ainda não estão disponíveis. Origem de navegador deve corresponder a PUBLIC_BASE_URL; mutações por cookie exigem X-CSRF-Token. Conferência automática opcional por webhook assinado do Instagram; habilitação depende da configuração Meta."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080"
+    }
+  ],
+  "paths": {
+    "/v1/auth/register": {
+      "post": {
+        "summary": "Criar conta local e fornecer códigos de recuperação",
+        "operationId": "post_v1_auth_register",
+        "security": [],
+        "responses": {
+          "201": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Registration"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "summary": "Abrir sessão; TOTP obrigatório para administrador",
+        "operationId": "post_v1_auth_login",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Login"
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "description": "Sessão opaca __Host-nsm_session em produção; HttpOnly, Secure, SameSite=Lax, Path=/ e sem Domain. Desenvolvimento HTTP usa nsm_session.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/recover": {
+      "post": {
+        "summary": "Consumir código e redefinir senha",
+        "operationId": "post_v1_auth_recover",
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Sucesso"
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoveryInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "summary": "Revogar sessão atual",
+        "operationId": "post_v1_auth_logout",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sucesso"
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "summary": "Consultar conta, perfil vinculado e token CSRF",
+        "operationId": "get_v1_me",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/instagram/challenges": {
+      "post": {
+        "summary": "Emitir desafio de 24 horas para direct",
+        "operationId": "post_v1_me_instagram_challenges",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedChallenge"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChallengeInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/instagram/challenges/{id}": {
+      "get": {
+        "summary": "Consultar estado de desafio próprio",
+        "operationId": "get_v1_me_instagram_challenges_id",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Challenge"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/me/instagram/challenges/{id}/sent": {
+      "post": {
+        "summary": "Informar envio sem verificar perfil",
+        "operationId": "post_v1_me_instagram_challenges_id_sent",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sucesso"
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/me/instagram/challenges/{id}/confirm": {
+      "post": {
+        "summary": "Confirmar perfil observado e consumir desafio",
+        "operationId": "post_v1_me_instagram_challenges_id_confirm",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialProfile"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/me/social-profiles/{id}": {
+      "delete": {
+        "summary": "Revogar vínculo próprio",
+        "operationId": "delete_v1_me_social_profiles_id",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sucesso"
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/admin/verifications": {
+      "get": {
+        "summary": "Listar até 50 desafios pendentes",
+        "operationId": "get_v1_admin_verifications",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Queue"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Somente administradores autenticados com TOTP."
+      }
+    },
+    "/v1/admin/verifications/observe": {
+      "post": {
+        "summary": "Registrar conferência de direct real",
+        "operationId": "post_v1_admin_verifications_observe",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Challenge"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObservationInput"
+              }
+            }
+          }
+        },
+        "description": "Somente administradores. Exige conferência manual na caixa oficial; não confirma screenshots nem acessa a Meta automaticamente. O administrador não pode conferir o próprio perfil."
+      }
+    },
+    "/v1/admin/verifications/{id}/reject": {
+      "post": {
+        "summary": "Rejeitar desafio com motivo",
+        "operationId": "post_v1_admin_verifications_id_reject",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sucesso"
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectionInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "Somente administradores."
+      }
+    },
+    "/health/live": {
+      "get": {
+        "summary": "Consultar liveness do processo",
+        "operationId": "get_health_live",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "summary": "Consultar disponibilidade das dependências",
+        "operationId": "get_health_ready",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro padronizado; inclui 400, 401, 403, 404, 409, 413, 429 ou 503 conforme a operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/webhooks/instagram": {
+      "get": {
+        "summary": "Validação de inscrição do webhook Meta (somente no modo webhook)",
+        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "hub.mode",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "subscribe"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "hub.verify_token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hub.challenge",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Challenge devolvido como texto puro",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Token ou parâmetros inválidos"
+          },
+          "404": {
+            "description": "Integração desativada"
+          }
+        }
+      },
+      "post": {
+        "summary": "Receber código de vínculo enviado por mensagem direta ao Instagram oficial",
+        "description": "Valida HMAC-SHA256 sobre os bytes originais com o App Secret. Filtra a conta destinatária, consulta a identidade do remetente na Graph API e persiste a conferência e a deduplicação em transação. Não conclui o vínculo: a confirmação final continua autenticada. Não envia mensagens de resposta. Limite de 256 KiB e 100 eventos por entrega. A consulta de perfil pode ser repetida após falha transitória; confirmações já gravadas são idempotentes.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Hub-Signature-256",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^sha256=[0-9a-fA-F]{64}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Payload Meta object=instagram, entry[].id e entry[].messaging[] com sender.id, recipient.id, timestamp em milissegundos e message.mid/text. Campos adicionais são tolerados para compatibilidade com Meta."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "EVENT_RECEIVED: evento persistido, já processado ou não aplicável",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "JSON inválido"
+          },
+          "403": {
+            "description": "Assinatura ausente ou inválida"
+          },
+          "404": {
+            "description": "Integração desativada"
+          },
+          "413": {
+            "description": "Corpo ou quantidade de eventos excede limite"
+          },
+          "503": {
+            "description": "Falha transitória; Meta pode reenviar. Nenhum sucesso é confirmado antes do commit."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-nsm_session",
+        "description": "Produção: cookie __Host- com Secure, HttpOnly, SameSite=Lax, Path=/ e sem Domain. Em localhost HTTP de desenvolvimento, o nome é nsm_session."
+      },
+      "csrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "member",
+              "admin"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "display_name",
+          "role",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "Challenge": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_handle": {
+            "type": "string"
+          },
+          "observed_handle": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "awaiting_confirmation",
+              "verified",
+              "expired",
+              "rejected",
+              "cancelled"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sent_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "verification_method": {
+            "type": "string",
+            "enum": [
+              "manual_dm",
+              "instagram_webhook"
+            ]
+          },
+          "verification_mode": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "webhook"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "expected_handle",
+          "observed_handle",
+          "status",
+          "created_at",
+          "expires_at",
+          "sent_at"
+        ],
+        "additionalProperties": false
+      },
+      "SocialProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "instagram"
+            ]
+          },
+          "handle": {
+            "type": "string"
+          },
+          "verification_method": {
+            "type": "string",
+            "enum": [
+              "manual_dm",
+              "instagram_webhook"
+            ]
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "public_visibility": {
+            "type": "boolean",
+            "const": false
+          }
+        },
+        "required": [
+          "id",
+          "platform",
+          "handle",
+          "verification_method",
+          "verified_at",
+          "public_visibility"
+        ],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "request_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "request_id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "RegistrationInput": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32,
+            "pattern": "^[a-zA-Z0-9_]{3,32}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "Registration": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "recovery_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 10,
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "user",
+          "recovery_codes"
+        ],
+        "additionalProperties": false
+      },
+      "LoginInput": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "writeOnly": true
+          },
+          "totp": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "Login": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "csrf_token": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "user",
+          "csrf_token",
+          "expires_at"
+        ],
+        "additionalProperties": false
+      },
+      "RecoveryInput": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32,
+            "pattern": "^[a-zA-Z0-9_]{3,32}$"
+          },
+          "recovery_code": {
+            "type": "string",
+            "maxLength": 100,
+            "writeOnly": true
+          },
+          "new_password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "username",
+          "recovery_code",
+          "new_password"
+        ],
+        "additionalProperties": false
+      },
+      "ChallengeInput": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 31
+          }
+        },
+        "required": [
+          "handle"
+        ],
+        "additionalProperties": false
+      },
+      "IssuedChallenge": {
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "#/components/schemas/Challenge"
+          },
+          "code": {
+            "type": "string",
+            "writeOnly": false,
+            "description": "Exibido somente uma vez; enviar ao perfil oficial. Não aparece em consultas posteriores."
+          },
+          "official_handle": {
+            "type": "string"
+          },
+          "direct_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "verification_mode": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "webhook"
+            ]
+          }
+        },
+        "required": [
+          "challenge",
+          "code",
+          "official_handle",
+          "direct_url",
+          "verification_mode"
+        ],
+        "additionalProperties": false
+      },
+      "ObservationInput": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 100,
+            "writeOnly": true
+          },
+          "observed_handle": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "code",
+          "observed_handle",
+          "reference"
+        ],
+        "additionalProperties": false
+      },
+      "RejectionInput": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "Me": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "instagram_profile": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SocialProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "csrf_token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "instagram_profile",
+          "csrf_token"
+        ],
+        "additionalProperties": false
+      },
+      "Queue": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "expected_handle": {
+                      "type": "string"
+                    },
+                    "observed_handle": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "awaiting_confirmation",
+                        "verified",
+                        "expired",
+                        "rejected",
+                        "cancelled"
+                      ]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "sent_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "user_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "expected_handle",
+                    "observed_handle",
+                    "status",
+                    "created_at",
+                    "expires_at",
+                    "sent_at",
+                    "user_id"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "const": 50
+          }
+        },
+        "required": [
+          "items",
+          "limit"
+        ],
+        "additionalProperties": false
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

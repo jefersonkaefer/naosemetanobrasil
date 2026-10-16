@@ -1,0 +1,68 @@
+name: naosemeta
+
+x-app-environment: &app-environment
+  APP_ENV: development
+  LISTEN_HOST: "0.0.0.0" # Container only; published ports remain bound to host loopback.
+  PORT: "8080"
+  DATABASE_URL: postgres://postgres:postgres@db:5432/naosemeta?sslmode=disable
+  PUBLIC_BASE_URL: http://localhost:8080
+  INSTAGRAM_OFFICIAL_HANDLE: ${INSTAGRAM_OFFICIAL_HANDLE:-naosemetanobrasil}
+  INSTAGRAM_VERIFICATION_MODE: ${INSTAGRAM_VERIFICATION_MODE:-manual}
+  META_APP_SECRET: ${META_APP_SECRET:-}
+  META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
+  INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
+  INSTAGRAM_ACCOUNT_ID: ${INSTAGRAM_ACCOUNT_ID:-}
+  META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION:-}
+  VERIFICATION_CODE_PEPPER: local-development-only-not-for-production-123456
+  TOTP_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: naosemeta
+    ports:
+      - "127.0.0.1:${PG_PORT:-55432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d naosemeta"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  api:
+    image: naosemeta-backend:local
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment: *app-environment
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate:
+    image: naosemeta-backend:local
+    build: .
+    profiles: ["tools"]
+    entrypoint: ["/app/migrate"]
+    environment: *app-environment
+    depends_on:
+      db:
+        condition: service_healthy
+
+  admin:
+    image: naosemeta-backend:local
+    build: .
+    profiles: ["tools"]
+    entrypoint: ["/app/admin"]
+    stdin_open: true
+    tty: true
+    environment: *app-environment
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

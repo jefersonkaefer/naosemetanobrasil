@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+app
+bin/
+.cache/
+coverage.out
+*.test
+*.log
+.DS_Store
+node_modules/
+web/dist/
+web/playwright-report/
+web/test-results/
+web/coverage/

@@ -1,0 +1,12 @@
+.git
+.env
+.env.*
+.cache
+bin
+app
+coverage.out
+*.log
+**/node_modules
+web/dist
+web/playwright-report
+web/test-results
