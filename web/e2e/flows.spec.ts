@@ -152,7 +152,10 @@ test("cadastro, vínculo por direct, conferência administrativa e recuperação
       .trim();
     await admin.getByLabel("Código do autenticador").fill(otp);
     await admin.getByRole("button", { name: "Entrar na minha conta" }).click();
-    await admin.getByRole("link", { name: "Conferir vínculos" }).click();
+    await expect(admin).toHaveURL(/\/admin\/verificacoes$/);
+    await expect(
+      admin.getByRole("heading", { name: "Conferência de vínculos." }),
+    ).toBeVisible();
     await admin.getByLabel("Código recebido no direct").fill(code!);
     await admin.getByLabel("Perfil real do remetente").fill(handle);
     await admin

@@ -16,13 +16,25 @@ import { RecoveryCodes } from "../components/RecoveryCodes";
 export function LoginPage() {
   const auth = useAuth();
   const action = useAction();
-  const navigate = useNavigate();
   const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [admin, setAdmin] = useState(false);
+  const [admin, setAdmin] = useState(from === "/admin/verificacoes");
   const [totp, setTotp] = useState("");
-  if (auth.session) return <Navigate to="/conta" replace />;
+  if (auth.session)
+    return (
+      <Navigate
+        to={
+          auth.session.user.role === "admin"
+            ? "/admin/verificacoes"
+            : from && ["/conta", "/vincular"].includes(from)
+              ? from
+              : "/conta"
+        }
+        replace
+      />
+    );
   function submit(event: FormEvent) {
     event.preventDefault();
     void action.run(async () => {
@@ -33,13 +45,6 @@ export function LoginPage() {
       });
       setPassword("");
       setTotp("");
-      const from = (location.state as { from?: string } | null)?.from;
-      navigate(
-        from && ["/conta", "/vincular", "/admin/verificacoes"].includes(from)
-          ? from
-          : "/conta",
-        { replace: true },
-      );
     });
   }
   return (
