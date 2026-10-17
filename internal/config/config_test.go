@@ -70,3 +70,31 @@ func TestDevelopmentKeysCannotBeUsedInProduction(t *testing.T) {
 		t.Fatal("accepted zero TOTP key")
 	}
 }
+
+func TestRenderOriginBootstrapsUntilCustomDomainIsConfigured(t *testing.T) {
+	key := make([]byte, 32)
+	key[0] = 1
+	values := map[string]string{
+		"APP_ENV":                   "production",
+		"RENDER_EXTERNAL_URL":       "https://example-generated.onrender.com",
+		"DATABASE_URL":              "postgres://app:password@db.example.test/app?sslmode=verify-full",
+		"INSTAGRAM_OFFICIAL_HANDLE": "projeto",
+		"VERIFICATION_CODE_PEPPER":  strings.Repeat("p", 64),
+		"TOTP_ENCRYPTION_KEY":       base64.StdEncoding.EncodeToString(key),
+	}
+	get := func(k string) string { return values[k] }
+	c, err := config.Parse(get)
+	if err != nil || c.Origin != values["RENDER_EXTERNAL_URL"] {
+		t.Fatal("Render origin fallback failed", err)
+	}
+	values["PUBLIC_BASE_URL"] = "https://naosemetanobrasil.online"
+	c, err = config.Parse(get)
+	if err != nil || c.Origin != values["PUBLIC_BASE_URL"] {
+		t.Fatal("custom domain must take precedence", err)
+	}
+	values["PUBLIC_BASE_URL"] = ""
+	values["RENDER_EXTERNAL_URL"] = "http://example-generated.onrender.com"
+	if _, err = config.Parse(get); err == nil {
+		t.Fatal("accepted an insecure production origin")
+	}
+}

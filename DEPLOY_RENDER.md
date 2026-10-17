@@ -1,43 +1,95 @@
 # Publicação no Render Free
 
-O responsável já criou a conta no Render, registrou `naosemetanobrasil.online` e criou o Instagram `@naosemetanobrasil`. Este arquivo prepara a publicação; nenhum serviço foi criado ou publicado por esta alteração.
+Repositório: [jefersonkaefer/naosemetanobrasil](https://github.com/jefersonkaefer/naosemetanobrasil), branch `main`. Domínio: `naosemetanobrasil.online`. Instagram: `@naosemetanobrasil`.
 
-## Serviço
+O Blueprint cria um Web Service Docker **Free**, com frontend e API juntos, na região **Virginia**. O banco fica no Supabase Free. O manifesto não cria banco Render, disco, worker ou recurso pago. Deploys automáticos estão desativados. Este documento prepara a publicação; não confirma que um serviço já foi publicado.
 
-O `render.yaml` define um único Web Service Docker no plano `free`, com frontend e API na mesma origem. O banco permanece externo, no Supabase do projeto. O manifesto não cria banco Render, disco, worker ou recurso pago. Deploys automáticos estão desativados.
+## 1. Criar o banco
 
-1. Disponibilizar este projeto em um repositório Git acessível à conta do Render. O checkout local ainda não tem repositório Git configurado.
-2. Criar ou usar o PostgreSQL do projeto no Supabase Free. Guardar a URL do pooler de sessão, com usuário e senha e `sslmode=verify-full`, nas variáveis do provedor. Não enviar credenciais por chat nem versioná-las.
-3. Gerar os dois segredos independentes seguindo o README. Guardar o pepper e a chave TOTP em um gerenciador de segredos e usá-los no serviço; não trocar depois da publicação sem migração dos dados afetados.
-4. Aplicar as migrações a partir de um ambiente local confiável, com `APP_ENV=production` e `DATABASE_URL` já definidos no processo:
+1. Entrar no [Supabase Dashboard](https://supabase.com/dashboard), escolher uma organização **Free** e criar o projeto `naosemetanobrasil`.
+2. Preferir **East US / North Virginia (`us-east-1`)** para ficar perto do serviço Render. Se indisponível, combinar as regiões antes de criar o serviço.
+3. Definir a senha do banco no painel e guardá-la em um gerenciador de senhas. Não enviar por chat.
+4. Aguardar o banco ficar disponível. Em **Connect**, copiar a conexão **Session pooler**, porta **5432**. Não usar 6543: o backend usa prepared statements.
+5. Em **Database settings**, baixar o certificado raiz do banco e guardar fora do repositório. Usar `sslmode=verify-full` e `sslrootcert` na conexão.
 
-   ```sh
-   rtk proxy go run ./cmd/migrate
-   ```
+Copiar o host e a referência do projeto do painel. O host não pode ser inferido pela região. O pooler de sessão funciona por IPv4 no Free. [Conexão Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres).
 
-   O comando usa a URL do ambiente e não carrega `.env` automaticamente. A migração é versionada e pode ser executada novamente. Não depende de shell, job avulso ou comando de pre-deploy do Render Free.
+## 2. Migrações e permissões
 
-5. No Render, importar o repositório por **New → Blueprint**, usando `render.yaml`. Informar `DATABASE_URL`, `VERIFICATION_CODE_PEPPER` e `TOTP_ENCRYPTION_KEY` nos campos privados. Confirmar que o serviço está no plano **Free**.
-6. No painel do serviço, consultar os registros DNS solicitados para `naosemetanobrasil.online` e aplicá-los no registrador do domínio. Esperar a validação do domínio e do certificado HTTPS.
-7. Abrir `https://naosemetanobrasil.online/health/ready` e conferir cadastro e login pelo domínio final. A configuração de origem do backend é esse domínio: testar mutações pelo subdomínio `onrender.com` dará erro de origem. Se usar temporariamente o subdomínio Render, alterar `PUBLIC_BASE_URL` para a origem exata exibida pelo painel e restaurar o domínio final depois.
-8. Criar o administrador a partir de um ambiente local confiável, com a configuração de produção no processo, usando `rtk proxy go run ./cmd/admin -username administrador`. Para promover uma conta existente, usar `rtk proxy go run ./cmd/admin -promote -username seu_usuario`: exige a senha atual e TOTP, preserva a conta e encerra as sessões antigas. Os comandos solicitam a senha no terminal privado. Não há administrador padrão nem senha sintética em produção.
+Em um terminal privado, configurar `APP_ENV=production` e `DATABASE_URL` com a conexão do proprietário, TLS e o caminho **local** do certificado. Não registrar a senha no histórico do shell. A API não carrega `.env` automaticamente.
 
-Aplicar a migração 003 e usar credencial de runtime diferente da credencial de migração. O histórico fica em `app.nsm_migrations` e não deve receber grants para a API. Conferir as permissões reais no Supabase e as pendências registradas em [SECURITY_REVIEW.md](SECURITY_REVIEW.md).
+```sh
+rtk proxy go run ./cmd/migrate
+```
 
-O build Docker ainda precisa ser validado no Render; a configuração local anterior foi testada com os binários e PostgreSQL, sem um daemon Docker disponível.
+Depois, com a conexão do proprietário nas variáveis `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE`, `PGSSLMODE=verify-full` e `PGSSLROOTCERT`, executar os comandos abaixo. `-W` solicita a senha do proprietário sem colocá-la no comando:
 
-## Limites do plano gratuito
+```sh
+rtk proxy psql -X -W -v ON_ERROR_STOP=1 -f deploy/supabase-runtime.sql
+rtk proxy psql -X -W -c '\password nsm_api'
+rtk proxy psql -X -W -v ON_ERROR_STOP=1 -c 'ALTER ROLE nsm_api LOGIN'
+```
 
-O serviço gratuito pode dormir após 15 minutos sem tráfego e levar cerca de um minuto para voltar. Isso pode atrasar ou provocar novas entregas de webhooks. Uma integração de mensagens deverá tolerar novas entregas, persistir eventos e não depender de memória ou arquivos locais.
+O script cria `nsm_api` sem login. O segundo comando solicita uma senha independente para esse usuário; o terceiro habilita o login. O script concede somente as operações usadas pela API, sem criação de tabelas, leitura do histórico de migrações ou leitura dos eventos de auditoria. Reexecutá-lo preserva a senha existente.
 
-Manter a conta sem método de pagamento e acompanhar as cotas. O Render documenta suspensão de serviços ou builds quando os limites são atingidos sem pagamento cadastrado. O PostgreSQL gratuito do Render expira em 30 dias, por isso não é usado neste manifesto.
+A `DATABASE_URL` do **Render** deve usar `nsm_api.PROJECT_REF` e sua senha, nunca o proprietário. O caminho do certificado no Render será diferente do local:
 
-Referências: [Blueprints](https://render.com/docs/blueprint-spec), [limites gratuitos](https://render.com/docs/free).
+```text
+postgresql://nsm_api.PROJECT_REF:SENHA_CODIFICADA@HOST_DO_POOLER:5432/postgres?sslmode=verify-full&sslrootcert=/etc/secrets/supabase-ca.crt
+```
 
-## Automação do Instagram
+Esse é apenas um modelo: substituir os campos em um local privado e codificar os caracteres reservados da senha para URL. O schema `app` deve ficar fora dos schemas expostos pela Data API. O histórico fica em `app.nsm_migrations`.
 
-O recebimento automático do código está implementado e documentado em [INSTAGRAM_INTEGRATION.md](INSTAGRAM_INTEGRATION.md). A pessoa copia o código da plataforma, envia pelo próprio Instagram e confirma o vínculo no site após a conferência automática. Não há segundo código nem mensagem de resposta automática.
+As migrações são executadas com o proprietário, fora do build e da inicialização da API. O Render Free não oferece shell ou jobs avulsos para esse trabalho.
 
-O Blueprint começa com `INSTAGRAM_VERIFICATION_MODE=manual` para continuar funcionando sem credenciais Meta. Após aplicar a migração `002_instagram_webhook.sql`, configurar no painel privado do Render `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`, `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_ACCOUNT_ID` e `META_GRAPH_API_VERSION`. Só então alterar o modo para `webhook` no Blueprint e no serviço, para que um futuro sync não restaure `manual`, e cadastrar a URL HTTPS no aplicativo Meta. Credenciais incompletas no modo webhook impedem a inicialização; não há fallback silencioso.
+## 3. Segredos
 
-O webhook do domínio final será `https://naosemetanobrasil.online/v1/webhooks/instagram`. Não publicar tokens no repositório nem compartilhar por chat. A confirmação real com a Meta e a publicação no Render ainda estão pendentes.
+Gerar `VERIFICATION_CODE_PEPPER` e `TOTP_ENCRYPTION_KEY` novos e independentes, conforme [README.md](README.md). O pepper deve ter pelo menos 32 bytes aleatórios; a chave TOTP deve representar 32 bytes aleatórios em Base64. Guardar no gerenciador de segredos junto da estratégia de backup.
+
+Trocar o pepper invalida sessões, desafios e códigos de recuperação. Trocar a chave TOTP sem recifrar os registros impede o acesso administrativo. Não reutilizar as chaves locais, do Compose ou dos testes.
+
+## 4. Serviço Render
+
+1. No [Render Dashboard](https://dashboard.render.com), escolher **New → Blueprint** e conectar somente `jefersonkaefer/naosemetanobrasil`.
+2. Se o repositório recriado não aparecer, usar **Public Git Repository** com `https://github.com/jefersonkaefer/naosemetanobrasil`, enquanto ele estiver público. Esse caminho dispensa ampliar permissões da integração GitHub; os deploys continuarão manuais. Para um repositório privado, autorizar somente esse repositório na integração. Escolher `main` e `render.yaml` da raiz.
+3. Conferir um Web Service, runtime **Docker**, plano **Free**, região **Virginia**.
+4. Preencher nos campos privados `DATABASE_URL`, `VERIFICATION_CODE_PEPPER` e `TOTP_ENCRYPTION_KEY`. Não colocar valores no YAML, no GitHub ou no chat.
+5. Em **Environment → Secret Files**, cadastrar `supabase-ca.crt` com o certificado raiz do Supabase. Ele estará em `/etc/secrets/supabase-ca.crt`. O Docker usa um usuário sem privilégios de root e o grupo necessário para ler o arquivo.
+6. Fazer deploy manual após salvar a configuração completa. Se o Blueprint disparar um primeiro build antes de cadastrar o certificado, concluir a configuração e repetir o deploy manual.
+7. Conferir o build e o estado **Live**. O health check `/health/ready` verifica conexão, schema e permissões do banco.
+
+O primeiro deploy usa `RENDER_EXTERNAL_URL`, fornecido pelo Render. Cadastro e login funcionam no endereço HTTPS `onrender.com` exibido pelo painel, antes de configurar DNS. Testar `/health/ready`, cadastro, login e logout nesse endereço.
+
+As contas da prévia local não são copiadas automaticamente. Relatos públicos e uploads ainda são prévias, conforme o README.
+
+O Dockerfile não consome segredos no build. Certificados, chaves, arquivos de ambiente e dumps estão excluídos do contexto Docker e do Git. [Secret files no Render](https://render.com/docs/docker-secrets).
+
+## 5. Domínio e administrador
+
+O Blueprint declara `naosemetanobrasil.online`. Em **Settings → Custom Domains**, consultar os registros DNS exigidos e aplicá-los no registrador. Aguardar a validação e o certificado HTTPS. Depois, definir no serviço e fazer deploy:
+
+```text
+PUBLIC_BASE_URL=https://naosemetanobrasil.online
+```
+
+Essa origem explícita substitui o endereço automático. Usar o domínio final para autenticação; mutações no `onrender.com` serão rejeitadas por origem. O Blueprint não sobrescreve essa variável.
+
+Criar o administrador em um terminal privado com as variáveis **de produção** e o certificado **local** configurados:
+
+```sh
+rtk proxy go run ./cmd/admin -username seu_usuario
+# Para promover uma conta já cadastrada no site publicado:
+rtk proxy go run ./cmd/admin -promote -username seu_usuario
+```
+
+O comando exige senha e autenticador, usa o terminal privado mesmo sob RTK e não envia esses dados ao chat. A promoção mantém a conta e encerra as sessões antigas. Entrar com **Acesso administrativo** e o próximo código do autenticador. Não existe administrador padrão; `jefkaefer` da prévia local não é migrada automaticamente.
+
+## Limites e estado
+
+Manter ambos os planos Free e evitar método de pagamento no Render para impedir cobranças de excedentes. As cotas podem suspender o serviço ou novos builds. O serviço pode dormir após 15 minutos sem tráfego. O PostgreSQL Free do Render expira em 30 dias, por isso não é utilizado. [Limites oficiais](https://render.com/docs/free).
+
+O primeiro deploy usa `INSTAGRAM_VERIFICATION_MODE=manual`. A automação Meta não bloqueia a publicação. Para habilitar depois, seguir [INSTAGRAM_INTEGRATION.md](INSTAGRAM_INTEGRATION.md). Callback final: `https://naosemetanobrasil.online/v1/webhooks/instagram`.
+
+As imagens Node e Go foram confirmadas no registro oficial. O build completo da imagem ainda deve ser validado pelo Render: o daemon Docker local não respondeu. Preparação local não confirma um deploy na nuvem. Conferir as permissões reais do Supabase e as pendências em [SECURITY_REVIEW.md](SECURITY_REVIEW.md).
+
+Referências: [Blueprints](https://render.com/docs/blueprint-spec), [variáveis automáticas](https://render.com/docs/environment-variables), [conexão Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres).

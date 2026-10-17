@@ -36,6 +36,12 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	restore, err := privateTerminal()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Execute o comando em um terminal privado interativo; não informe senhas pelo chat.")
+		return err
+	}
+	defer restore()
 	if *promote {
 		return promoteExisting(cfg, username)
 	}

@@ -8,6 +8,12 @@ coverage.out
 *.test
 *.log
 .DS_Store
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.dump
 node_modules/
 web/dist/
 web/playwright-report/

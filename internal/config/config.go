@@ -47,6 +47,11 @@ func Parse(get func(string) string) (Config, error) {
 	if c.Environment != "production" && c.Environment != "development" {
 		return c, fmt.Errorf("APP_ENV must be production or development")
 	}
+	// Render provides the actual HTTPS service URL, including any generated
+	// suffix. An explicit custom domain always takes precedence.
+	if c.Origin == "" && c.Environment == "production" {
+		c.Origin = get("RENDER_EXTERNAL_URL")
+	}
 	c.ListenHost = get("LISTEN_HOST")
 	if c.ListenHost == "" {
 		c.ListenHost = "0.0.0.0"

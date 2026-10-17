@@ -122,7 +122,9 @@ rtk go run ./cmd/api
 rtk go run ./cmd/admin -username administrador
 ```
 
-Migrações são executadas explicitamente com credencial própria. A API não deve receber permissão para criar tabelas. Em produção, conceder ao papel da aplicação `USAGE` no schema `app`, `SELECT/INSERT/UPDATE/DELETE` nas tabelas e `USAGE/SELECT` nas sequências necessárias, sem expor o schema na Data API.
+Migrações são executadas explicitamente com credencial própria. A API não deve receber permissão para criar tabelas. Em produção, aplicar [deploy/supabase-runtime.sql](deploy/supabase-runtime.sql) após migrar: o script concede as operações necessárias ao usuário dedicado `nsm_api`, preservando o histórico de migrações privado. Definir a senha e habilitar o login separadamente, conforme [DEPLOY_RENDER.md](DEPLOY_RENDER.md), sem expor o schema na Data API.
+
+No Render, se `PUBLIC_BASE_URL` não estiver definida, o backend usa a origem HTTPS de `RENDER_EXTERNAL_URL`. Após validar DNS e certificado do domínio próprio, definir explicitamente `PUBLIC_BASE_URL=https://naosemetanobrasil.online`.
 
 ## Fluxo HTTP do vínculo
 

@@ -6,6 +6,13 @@ bin
 app
 coverage.out
 *.log
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.dump
+supabase-ca.crt
 **/node_modules
 web/dist
 web/playwright-report
