@@ -12,6 +12,8 @@ coverage.out
 *.pfx
 *.crt
 *.dump
+**/__pycache__
+*.pyc
 supabase-ca.crt
 **/node_modules
 web/dist

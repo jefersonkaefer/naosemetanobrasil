@@ -16,6 +16,15 @@ Copiar o host e a referência do projeto do painel. O host não pode ser inferid
 
 ## 2. Migrações e permissões
 
+Para um projeto novo, há um assistente que faz esta etapa e gera os três valores do Render. Requer Python 3, Go e `psql` instalados. Execute em um terminal privado, depois de copiar a conexão **Session pooler** e baixar o certificado raiz:
+
+```sh
+rtk proxy python3 scripts/prepare-supabase.py
+# Se psql não estiver no PATH, informar --psql CAMINHO_DO_CLIENTE.
+```
+
+O assistente recebe a conexão e senhas sem eco, verifica TLS, aplica migrações, configura `nsm_api` e mostra os valores somente no terminal privado. Não grava arquivos de segredos nem coloca senhas em argumentos. Recusa gerar novas chaves se o banco já tiver contas. A senha de `nsm_api` é definida pelo comando oficial `psql \password`. Os passos manuais equivalentes estão abaixo.
+
 Em um terminal privado, configurar `APP_ENV=production` e `DATABASE_URL` com a conexão do proprietário, TLS e o caminho **local** do certificado. Não registrar a senha no histórico do shell. A API não carrega `.env` automaticamente.
 
 ```sh
