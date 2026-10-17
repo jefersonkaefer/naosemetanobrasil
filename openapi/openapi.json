@@ -474,7 +474,7 @@
             }
           }
         },
-        "description": "Somente administradores. Exige conferência manual na caixa oficial; não confirma screenshots nem acessa a Meta automaticamente. O administrador não pode conferir o próprio perfil."
+        "description": "Somente administradores. Exige conferência manual na caixa oficial; não confirma screenshots nem acessa a Meta automaticamente. O administrador não pode conferir o próprio perfil; essa tentativa retorna HTTP 403 com código self_review_forbidden e mantém o pedido pendente."
       }
     },
     "/v1/admin/verifications/{id}/reject": {

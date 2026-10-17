@@ -260,6 +260,8 @@ func (s *Server) json(w http.ResponseWriter, status int, value any) {
 func (s *Server) failure(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, message := 503, "unavailable", "Serviço temporariamente indisponível."
 	switch {
+	case errors.Is(err, domain.ErrSelfReview):
+		status, code, message = 403, "self_review_forbidden", "Você não pode conferir o vínculo da sua própria conta. Peça a outro administrador para conferir a mensagem no Instagram."
 	case errors.Is(err, domain.ErrInvalid):
 		status, code, message = 400, "invalid_input", "Confira os dados enviados."
 	case errors.Is(err, domain.ErrUnauthenticated):

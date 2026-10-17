@@ -76,8 +76,11 @@ func TestRejectedCancelledAndVerifiedChallengesAreTerminal(t *testing.T) {
 }
 func TestAdministratorCannotObserveOwnProfile(t *testing.T) {
 	c := challenge()
-	if err := c.Observe("pessoa", "owner", "reference", c.CreatedAt); !errors.Is(err, domain.ErrInvalid) {
+	if err := c.Observe("pessoa", "owner", "reference", c.CreatedAt); !errors.Is(err, domain.ErrSelfReview) {
 		t.Fatal(err)
+	}
+	if c.Status != domain.Pending || c.ReviewedBy != "" || c.ObservedHandle != "" {
+		t.Fatal("self-review modified the challenge")
 	}
 }
 func TestNormalizeHandleRejectsURLsAndLookalikes(t *testing.T) {

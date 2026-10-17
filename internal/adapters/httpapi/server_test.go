@@ -43,6 +43,26 @@ func (fakeVerification) Get(context.Context, string, string) (domain.Challenge, 
 
 type allowAll struct{}
 
+type selfReviewVerification struct{ VerificationUseCases }
+
+func (selfReviewVerification) Observe(context.Context, domain.User, string, string, string) (domain.Challenge, error) {
+	return domain.Challenge{}, domain.ErrSelfReview
+}
+
+func TestOwnReviewReturnsExplicitForbiddenMessage(t *testing.T) {
+	h := New(fakeAuth{user: domain.User{ID: "owner", Role: "admin"}}, selfReviewVerification{}, allowAll{}, security.Clock{}, security.NewSecrets("test"), Options{Origin: "https://platform.test", SecureCookies: true, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
+	req := httptest.NewRequest("POST", "/v1/admin/verifications/observe", strings.NewReader(`{"code":"synthetic","observed_handle":"pessoa","reference":"inbox reference"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://platform.test")
+	req.Header.Set("X-CSRF-Token", "expected-csrf")
+	req.AddCookie(&http.Cookie{Name: secureCookieName, Value: "session"})
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), `"code":"self_review_forbidden"`) || !strings.Contains(w.Body.String(), "outro administrador") {
+		t.Fatalf("unexpected self-review response: %d %s", w.Code, w.Body.String())
+	}
+}
+
 func (allowAll) Allow(context.Context, string, int, time.Duration, time.Time) error { return nil }
 
 func fixture(t *testing.T) (http.Handler, *bool) {

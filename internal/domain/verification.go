@@ -69,7 +69,10 @@ func (c *Challenge) Observe(handle, reviewerID, reference string, now time.Time)
 	if normalized != c.ExpectedHandle {
 		return ErrConflict
 	}
-	if reviewerID == "" || reference == "" || len(reference) > 200 || reviewerID == c.UserID {
+	if reviewerID != "" && reviewerID == c.UserID {
+		return ErrSelfReview
+	}
+	if reviewerID == "" || reference == "" || len(reference) > 200 {
 		return ErrInvalid
 	}
 	c.ObservedHandle, c.ReviewedBy, c.ReviewReference = normalized, reviewerID, reference

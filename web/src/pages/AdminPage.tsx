@@ -63,6 +63,10 @@ export function AdminPage() {
       <div className="admin-grid">
         <section className="panel">
           <h2>Registrar mensagem conferida</h2>
+          <p className="field-hint">
+            Você não pode conferir o vínculo da sua própria conta. Outro
+            administrador precisa conferir sua mensagem no Instagram.
+          </p>
           <form className="form-stack" onSubmit={submit}>
             {action.error && <Alert>{action.error}</Alert>}
             {success && (
@@ -142,6 +146,9 @@ export function AdminPage() {
             {items.map((item) => (
               <li key={item.id}>
                 <strong>@{item.expected_handle}</strong>
+                {item.user_id === auth.session?.user.id && (
+                  <small>Seu pedido — precisa de outro administrador.</small>
+                )}
                 <span className="status-pill">
                   {item.status === "awaiting_confirmation"
                     ? "Aguardando a pessoa"
